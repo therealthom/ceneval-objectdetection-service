@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Global variables for settings
-current_model = 'yolov8n.pt'
+current_model = 'yolov10m.pt'
 detection_interval = 5
 
 # Dictionary to store loaded models
@@ -132,7 +132,7 @@ def dashboard():
     anomalies = c.fetchall()
     conn.close()
 
-    yolo_models = ['yolov8n.pt', 'yolov8s.pt', 'yolov8m.pt', 'yolov8l.pt', 'yolov8x.pt']
+    yolo_models = ['yolov10n.pt', 'yolov10s.pt', 'yolov10m.pt', 'yolov10l.pt', 'yolov10x.pt']
     return render_template('dashboard.html', anomalies=anomalies,
                            current_model=current_model,
                            detection_interval=detection_interval,

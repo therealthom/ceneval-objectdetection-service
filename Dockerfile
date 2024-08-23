@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Descargar los modelos YOLOv8 (ajusta según los modelos que necesites)
-RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt'); YOLO('yolov8s.pt'); YOLO('yolov8m.pt'); YOLO('yolov8l.pt'); YOLO('yolov8x.pt')"
+RUN python -c "from ultralytics import YOLO; YOLO('yolov10n.pt'); YOLO('yolov10s.pt'); YOLO('yolov10m.pt'); YOLO('yolov10l.pt'); YOLO('yolov10x.pt')"
 
 # Exponer el puerto en el que se ejecutará la aplicación
 EXPOSE 5000
