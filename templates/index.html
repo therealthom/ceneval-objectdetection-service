@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 Object Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .detection-info {
+            font-size: 0.75rem;
+            line-height: 1.2;
+            max-height: 3.6em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+        .card-img-top {
+            height: 120px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">YOLOv8 Object Detection</a>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="card-title mb-0">Webcam Feed</h5>
+                    </div>
+                    <div class="card-body">
+                        <video id="video" class="w-100 rounded" autoplay></video>
+                        <canvas id="canvas" style="display: none;"></canvas>
+                        <div class="mt-3">
+                            <button id="startButton" class="btn btn-success">Start Detection</button>
+                            <button id="stopButton" class="btn btn-danger" style="display: none;">Stop Detection</button>
+                        </div>
+                        <div class="mt-3">
+                            <label for="intervalSlider" class="form-label">Detection Interval: <span id="intervalValue">5</span> seconds</label>
+                            <input type="range" class="form-range" min="1" max="10" step="1" value="5" id="intervalSlider">
+                        </div>
+                        <div class="mt-3">
+                            <label for="modelSelect" class="form-label">Select YOLOv8 Model:</label>
+                            <select id="modelSelect" class="form-select">
+                                <option value="yolov8n.pt">YOLOv8n (Nano)</option>
+                                <option value="yolov8s.pt">YOLOv8s (Small)</option>
+                                <option value="yolov8m.pt">YOLOv8m (Medium)</option>
+                                <option value="yolov8l.pt">YOLOv8l (Large)</option>
+                                <option value="yolov8x.pt">YOLOv8x (Extra Large)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="card-title mb-0">Latest Detection</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="results" class="text-center"></div>
+                    </div>
+                </div>
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="card-title mb-0">Anomaly Counter</h5>
+                    </div>
+                    <div class="card-body">
+                        <h2 id="anomalyCounter" class="text-center">0</h2>
+                        <p class="text-center mb-0">Anomaly Detections</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="card-title mb-0">Normal Detections</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="normalHistory" class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="card-title mb-0">Anomaly Detections</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="anomalyHistory" class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para mostrar imagen ampliada -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detection Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <img id="modalImage" src="" class="img-fluid" alt="Detection Image">
+                    <div id="modalDetails" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let startButton = document.getElementById('startButton');
+        let stopButton = document.getElementById('stopButton');
+        let intervalSlider = document.getElementById('intervalSlider');
+        let intervalValue = document.getElementById('intervalValue');
+        let anomalyCounter = document.getElementById('anomalyCounter');
+        let modelSelect = document.getElementById('modelSelect');
+        let detectionInterval;
+        let imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+        let anomalyDetections = [];
+        let normalDetections = [];
+
+        // Get access to the camera
+        if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
+                video.srcObject = stream;
+                video.play();
+            });
+        }
+
+        startButton.onclick = function() {
+            startButton.style.display = 'none';
+            stopButton.style.display = 'inline-block';
+            detectionInterval = setInterval(detectObjects, intervalSlider.value * 1000);
+        }
+
+        stopButton.onclick = function() {
+            startButton.style.display = 'inline-block';
+            stopButton.style.display = 'none';
+            clearInterval(detectionInterval);
+        }
+
+        intervalSlider.oninput = function() {
+            intervalValue.textContent = this.value;
+            axios.post('/set_interval', { interval: parseInt(this.value) })
+                .then(function (response) {
+                    console.log(response.data);
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                });
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = setInterval(detectObjects, this.value * 1000);
+            }
+        }
+
+        function detectObjects() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            let image = canvas.toDataURL('image/jpeg');
+
+            axios.post('/detect', {
+                image: image,
+                model: modelSelect.value
+            })
+                .then(function (response) {
+                    let detectionData = {
+                        ...response.data,
+                        time: new Date().toLocaleTimeString()
+                    };
+                    displayResults(detectionData);
+                    updateHistory(detectionData);
+                })
+                .catch(function (error) {
+                    if (error.response && error.response.status === 429) {
+                        console.log('Detection interval not reached');
+                    } else {
+                        console.error('Error:', error);
+                    }
+                });
+        }
+
+        function isAnomaly(objects) {
+            let personCount = objects.filter(obj => obj.class.toLowerCase() === 'person').length;
+            return personCount !== 1 || objects.some(obj => obj.class.toLowerCase() !== 'person');
+        }
+
+        function displayResults(data) {
+            let resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<img src="data:image/jpeg;base64,${data.image}" class="img-fluid rounded" style="max-height: 300px;">`;
+            let objectList = '<ul class="list-group mt-3">';
+            data.objects.forEach(obj => {
+                let isAnomalyItem = obj.class.toLowerCase() !== 'person';
+                objectList += `<li class="list-group-item d-flex justify-content-between align-items-center ${isAnomalyItem ? 'bg-warning' : ''}">
+                    ${obj.class}
+                    <span class="badge bg-primary rounded-pill">${obj.confidence.toFixed(2)}</span>
+                </li>`;
+            });
+            objectList += '</ul>';
+            resultsDiv.innerHTML += objectList;
+        }
+
+        function updateHistory(detection) {
+            let hasAnomaly = isAnomaly(detection.objects);
+            let detectionHtml = createDetectionHtml(detection);
+
+            if (hasAnomaly) {
+                anomalyDetections.unshift(detection);
+                let anomalyHistoryDiv = document.getElementById('anomalyHistory');
+                anomalyHistoryDiv.innerHTML = detectionHtml + anomalyHistoryDiv.innerHTML;
+            } else {
+                normalDetections.unshift(detection);
+                if (normalDetections.length > 10) {
+                    normalDetections.pop();
+                }
+                let normalHistoryDiv = document.getElementById('normalHistory');
+                normalHistoryDiv.innerHTML = '';
+                normalDetections.forEach(det => {
+                    normalHistoryDiv.innerHTML += createDetectionHtml(det);
+                });
+            }
+
+            anomalyCounter.textContent = anomalyDetections.length;
+        }
+
+        function createDetectionHtml(detection) {
+            let objectsInfo = detection.objects.map(obj =>
+                `${obj.class} (${obj.confidence.toFixed(2)})`
+            ).join(', ');
+
+            return `
+                <div class="col">
+                    <div class="card h-100">
+                        <img src="data:image/jpeg;base64,${detection.image}"
+                             class="card-img-top cursor-pointer"
+                             alt="Detection"
+                             onclick="showImageModal('${detection.image}', '${detection.time}', ${JSON.stringify(detection.objects)})">
+                        <div class="card-body p-2">
+                            <p class="card-text detection-info mb-1">${objectsInfo}</p>
+                            <p class="card-text small text-muted mb-0">${detection.time}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showImageModal(image, time, objects) {
+            document.getElementById('modalImage').src = `data:image/jpeg;base64,${image}`;
+            let detailsHtml = `<h6>${time}</h6>`;
+            detailsHtml += '<ul class="list-group">';
+            objects.forEach(obj => {
+                let isAnomalyItem = obj.class.toLowerCase() !== 'person';
+                detailsHtml += `<li class="list-group-item d-flex justify-content-between align-items-center ${isAnomalyItem ? 'bg-warning' : ''}">
+                    ${obj.class}
+                    <span class="badge bg-primary rounded-pill">${obj.confidence.toFixed(2)}</span>
+                </li>`;
+            });
+            detailsHtml += '</ul>';
+            document.getElementById('modalDetails').innerHTML = detailsHtml;
+            imageModal.show();
+        }
+    </script>
+</body>
+</html>
