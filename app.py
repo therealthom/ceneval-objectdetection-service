@@ -8,6 +8,7 @@ import time
 import sqlite3
 from datetime import datetime
 import ast
+from collections import Counter
 
 app = Flask(__name__)
 CORS(app)
@@ -128,7 +129,7 @@ def save_anomaly(image, objects):
 def dashboard():
     conn = sqlite3.connect('monitoring.db')
     c = conn.cursor()
-    c.execute("SELECT * FROM anomalies ORDER BY timestamp DESC LIMIT 10")
+    c.execute("SELECT * FROM anomalies ORDER BY timestamp DESC LIMIT 100")
     anomalies = c.fetchall()
     conn.close()
 
@@ -137,6 +138,54 @@ def dashboard():
                            current_model=current_model,
                            detection_interval=detection_interval,
                            yolo_models=yolo_models)
+
+
+@app.route('/object_stats')
+def object_stats():
+    conn = sqlite3.connect('monitoring.db')
+    c = conn.cursor()
+    c.execute("SELECT objects FROM anomalies")
+    all_objects = c.fetchall()
+    c.execute("SELECT timestamp, image, objects FROM anomalies")
+    all_anomalies = c.fetchall()
+    conn.close()
+
+    object_counter = Counter()
+    for objects_str in all_objects:
+        objects = ast.literal_eval(objects_str[0])
+        object_counter.update([obj['class'] for obj in objects])
+
+    labels = list(object_counter.keys())
+    values = list(object_counter.values())
+
+    object_images = {}
+    for timestamp, image, objects_str in all_anomalies:
+        objects = ast.literal_eval(objects_str)
+        for obj in objects:
+            if obj['class'] not in object_images:
+                object_images[obj['class']] = []
+            object_images[obj['class']].append((timestamp, image, objects_str))
+
+    return render_template('object_stats.html', labels=labels, values=values, object_images=object_images)
+
+
+@app.route('/get_object_stats')
+def get_object_stats():
+    conn = sqlite3.connect('monitoring.db')
+    c = conn.cursor()
+    c.execute("SELECT objects FROM anomalies")
+    all_objects = c.fetchall()
+    conn.close()
+
+    object_counter = Counter()
+    for objects_str in all_objects:
+        objects = ast.literal_eval(objects_str[0])
+        object_counter.update([obj['class'] for obj in objects])
+
+    labels = list(object_counter.keys())
+    values = list(object_counter.values())
+
+    return jsonify({'labels': labels, 'values': values})
 
 
 @app.route('/set_model', methods=['POST'])

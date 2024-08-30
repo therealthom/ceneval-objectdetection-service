@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoring Dashboard</title>
+    <title>Dashboard de Monitoreo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
@@ -49,14 +49,17 @@
     <nav class="navbar navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">
-                <i class="fas fa-chart-line me-2"></i>Monitoring Dashboard
+                <i class="fas fa-chart-line me-2"></i>Dashboard de Monitoreo
             </a>
             <div>
                 <button id="clearDatabase" class="btn btn-danger me-2">
-                    <i class="fas fa-trash me-2"></i>Clear Database
+                    <i class="fas fa-trash me-2"></i>Limpiar Datos
                 </button>
                 <a href="/" class="btn btn-outline-light">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Detection
+                    <i class="fas fa-arrow-left me-2"></i>Detección en Vivo
+                </a>
+                <a href="/object_stats" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-right me-2"></i>Estadísticas
                 </a>
             </div>
         </div>
@@ -67,23 +70,23 @@
             <div class="col-md-3">
                 <div class="card mb-4">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0"><i class="fas fa-cogs me-2"></i>Control Panel</h5>
+                        <h5 class="card-title mb-0"><i class="fas fa-cogs me-2"></i>Panel de Control</h5>
                     </div>
                     <div class="card-body">
-                        <h6 class="card-subtitle mb-2">YOLO Model</h6>
+                        <h6 class="card-subtitle mb-2">Modelo IA</h6>
                         <select id="yoloModel" class="form-select mb-3">
                             {% for model in yolo_models %}
                                 <option value="{{ model }}" {% if model == current_model %}selected{% endif %}>{{ model }}</option>
                             {% endfor %}
                         </select>
 
-                        <h6 class="card-subtitle mb-2">Detection Interval</h6>
+                        <h6 class="card-subtitle mb-2">Intervalo de Detección</h6>
                         <div class="input-group mb-3">
                             <input type="number" id="detectionInterval" class="form-control" value="{{ detection_interval }}" min="1">
-                            <span class="input-group-text">seconds</span>
+                            <span class="input-group-text">segundos</span>
                         </div>
 
-                        <h6 class="card-subtitle mb-2 mt-3">Dashboard Refresh Interval</h6>
+                        <h6 class="card-subtitle mb-2 mt-3">Intervalo de Actualización del Dashboard</h6>
                         <select id="dashboardRefreshInterval" class="form-select mb-3">
                             <option value="0">Off</option>
                             <option value="5000">5 seconds</option>
@@ -92,24 +95,24 @@
                             <option value="60000">1 minute</option>
                         </select>
 
-                        <button id="applySettings" class="btn btn-primary w-100">Apply Settings</button>
+                        <button id="applySettings" class="btn btn-primary w-100">Aplicar Configuración</button>
                     </div>
                 </div>
             </div>
             <div class="col-md-9">
-                <h2 class="mb-4"><i class="fas fa-exclamation-triangle me-2"></i>Recent Anomalies</h2>
+                <h2 class="mb-4"><i class="fas fa-exclamation-triangle me-2"></i>Anomalías Recientes</h2>
                 <div class="row" id="anomalyContainer">
                     {% for anomaly in anomalies %}
                     <div class="col-md-4 col-lg-3 mb-4">
                         <div class="card anomaly-card">
                             <img src="data:image/jpeg;base64,{{ anomaly[2] }}" class="card-img-top anomaly-image" alt="Anomaly">
                             <div class="card-body">
-                                <h6 class="card-title"><i class="fas fa-exclamation-circle me-2"></i>Anomaly Detected</h6>
+                                <h6 class="card-title"><i class="fas fa-exclamation-circle me-2"></i>Anomalía Detectada</h6>
                                 <p class="card-text small">
                                     <strong><i class="far fa-clock me-2"></i>Time:</strong> {{ anomaly[1]|format_time }}<br>
                                 </p>
                                 <div class="detected-objects">
-                                    <strong><i class="fas fa-tags me-2"></i>Detected Objects:</strong>
+                                    <strong><i class="fas fa-tags me-2"></i>Objetos Detectados:</strong>
                                     {% for object in anomaly[3]|parse_objects %}
                                     <div class="object-item">
                                         <div class="d-flex justify-content-between">
@@ -145,7 +148,7 @@
         }
 
         document.getElementById('clearDatabase').addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear the database? This action cannot be undone.')) {
+            if (confirm('¿Estás seguro?.')) {
                 fetch('/clear_database', { method: 'POST' })
                     .then(response => response.json())
                     .then(data => {
@@ -200,7 +203,7 @@
         });
 
         // Initial setup for dashboard refresh
-        document.getElementById('dashboardRefreshInterval').value = "30000"; // Set default to 30 seconds
+        document.getElementById('dashboardRefreshInterval').value = "5000"; // Set default to 30 seconds
         document.getElementById('dashboardRefreshInterval').dispatchEvent(new Event('change'));
     </script>
 </body>
